@@ -142,9 +142,11 @@ Use AskUserQuestion to confirm:
 
 **Goal**: Generate a `graph LR` directed graph that captures the Domain Story as a graph — matching the actual Domain Storytelling notation.
 
-**Node types:**
-- **Actors** → circle shape: `((emoji Name))`
-- **Work Objects** → rectangle shape: `[emoji Name]`
+**Node types (no visible borders):**
+- **Actors** → `["emoji<br/>Name"]:::actor`
+- **Work Objects** → `["emoji<br/>Name"]:::wo`
+
+Both use `classDef fill:none,stroke:none` to hide the shape border. The `<br/>` places the label below the emoji. This notation renders correctly on GitHub and most modern Mermaid renderers.
 
 **Edge types:**
 - `-->|① verb|` — solid arrow for direct actions
@@ -154,20 +156,23 @@ Use AskUserQuestion to confirm:
 
 ```mermaid
 graph LR
+    classDef actor fill:none,stroke:none
+    classDef wo fill:none,stroke:none
+
     %% Actors
-    Client((👤 Client))
-    Site((🖥️ E-commerce Site))
-    Payment((💳 Payment Service))
-    Warehouse((🏭 Warehouse))
+    Client["👤<br/>Client"]:::actor
+    Site["🖥️<br/>E-commerce Site"]:::actor
+    Payment["💳<br/>Payment Service"]:::actor
+    Warehouse["🏭<br/>Warehouse"]:::actor
 
     %% Work Objects
-    Catalogue[📋 Product Catalogue]
-    Cart[🛒 Cart]
-    Order[📄 Order]
-    Delivery[🚚 Delivery Info]
-    PaymentData[💰 Payment Data]
-    Email[✉️ Confirmation Email]
-    PickingOrder[📦 Picking Order]
+    Catalogue["📋<br/>Product Catalogue"]:::wo
+    Cart["🛒<br/>Cart"]:::wo
+    Order["📄<br/>Order"]:::wo
+    Delivery["🚚<br/>Delivery Info"]:::wo
+    PaymentData["💰<br/>Payment Data"]:::wo
+    Email["✉️<br/>Confirmation Email"]:::wo
+    PickingOrder["📦<br/>Picking Order"]:::wo
 
     %% Activities
     Client -->|① browses| Catalogue
