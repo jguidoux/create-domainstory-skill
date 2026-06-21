@@ -1,6 +1,22 @@
+# Domain Storytelling Skills for Claude Code
+
+A pair of [Claude Code](https://claude.ai/code) skills for **Domain Storytelling** following the Hofer & Schwentner methodology:
+
+| Skill | What it does |
+|-------|-------------|
+| [`/create-domain-story`](#create-domain-story) | Elicits and documents the domain story (Markdown + Mermaid) |
+| [`/domain-story-to-excalidraw`](#domain-story-to-excalidraw) | Draws the story as a visual Excalidraw diagram |
+
+**Full DDD pipeline:**
+```
+/create-domain-story  →  /domain-story-to-excalidraw  →  event-storming
+```
+
+---
+
 # create-domain-story
 
-A [Claude Code](https://claude.ai/code) skill for **Domain Storytelling** following the Hofer & Schwentner methodology. Elicits business processes as pictographic stories, builds ubiquitous language, discovers bounded context candidates, and prepares for Event Storming.
+A skill for eliciting business processes as pictographic stories, building ubiquitous language, discovering bounded context candidates, and preparing for Event Storming.
 
 ---
 
@@ -190,12 +206,62 @@ Story elements map to Event Storming artifacts:
 
 | Skill | Purpose |
 |-------|---------|
-| `/excalidraw` | Visual Domain Storytelling diagram from this story |
-| `event-storming` | Next step — design "how it happens" |
+| `/domain-story-to-excalidraw` | **Companion skill** — draw this story on Excalidraw (next step) |
+| `event-storming` | Design "how it happens" after storytelling |
 | `/analyze-system` | Extract actors and ubiquitous language as input |
 | `/ddd-redesign` | Redesign bounded contexts |
 | `modular-architecture` | Implement discovered bounded contexts |
 | `adr-management` | Document decisions from storytelling sessions |
+
+---
+
+# domain-story-to-excalidraw
+
+Reads a Domain Story file produced by `/create-domain-story` and draws it on the [Excalidraw](https://excalidraw.com) canvas using the pictographic Domain Storytelling notation.
+
+## Features
+
+- **Auto emoji assignment** — matches actor/work object names to emoji icons by keyword
+- **Auto color coding** — actors get distinct colors by order of appearance; work objects are gray
+- **Bound arrows** — arrows stay connected to elements when moved
+- **Drift fix built-in** — automatically corrects Excalidraw's emoji repositioning bug after arrow creation
+- **PNG export** — saves the diagram to `reports/04_stories/[domain]_story.png`
+- **Boundary zones** (optional) — adds semi-transparent zones for bounded context candidates
+
+## Prerequisites
+
+The Excalidraw MCP server must be running:
+
+```bash
+cd /path/to/mcp_excalidraw
+PORT=3000 npm run canvas
+```
+
+Then open `http://localhost:3000` in your browser.
+
+## Installation
+
+```bash
+curl -o ~/.claude/skills/domain-story-to-excalidraw/SKILL.md \
+  https://raw.githubusercontent.com/jguidoux/create-domainstory-skill/master/domain-story-to-excalidraw/SKILL.md
+```
+
+## Usage
+
+Run `/create-domain-story` first, then:
+
+```
+/domain-story-to-excalidraw --file=reports/04_stories/ecommerce-commande_story.md
+```
+
+The skill will:
+1. Parse the story file (actors, work objects, numbered activities)
+2. Assign emojis and colors automatically
+3. Calculate the layout
+4. Draw everything on the canvas
+5. Fix the emoji drift bug
+6. Take a screenshot for review
+7. Export to PNG
 
 ---
 
