@@ -86,13 +86,24 @@ Assign colors to actors in order of appearance in the story. Work objects always
 - Solid `strokeStyle: "solid"` = direct action
 - Dashed `strokeStyle: "dashed"` = response, return, or indirect relation
 
-### ⚠️ Critical: Drift Fix (mandatory)
+### ⚠️ Invisible Rectangle Anchors (mandatory — prevents drift)
 
-**Known Excalidraw bug:** When creating bound arrows (`startElementId`/`endElementId`) pointing to emoji text elements, Excalidraw's frontend repositions those text elements after sync. This happens every time arrows are batch-created.
+**Known Excalidraw bug:** Binding arrows to emoji text elements (fontFamily:5) causes those elements to drift after frontend sync. The `update_element` fix is unreliable — the frontend overrides it immediately.
 
-**Fix — always apply after step 6:**
-Call `update_element` on **every icon element** to restore its intended position.
-Labels do not drift and do not need correction.
+**Solution — always use rectangle anchors:**
+For each actor/work object, create an invisible rectangle at the icon position and bind arrows to it instead of to the icon:
+
+```json
+{ "type": "rectangle", "id": "anchor-[slug]",
+  "x": icon_x, "y": icon_y, "width": 44, "height": 45,
+  "backgroundColor": "transparent", "strokeColor": "transparent",
+  "opacity": 0, "roughness": 0 }
+```
+
+Group each element as a **triplet**: `[icon-id, label-id, anchor-id]`.
+Bind arrows using `startElementId: "anchor-[slug]"` — never to `icon-[slug]`.
+
+**Benefits:** zero drift, multiple arrows auto-routed around rectangle perimeter (no pile-up when an actor has many arrows), no post-creation fix needed.
 
 ---
 
@@ -139,51 +150,45 @@ Place actors in a horizontal row at `y=250`.
 Distribute work objects above (`y=50`) or below (`y=450`) based on which actors use them.
 Record the intended `(x, y)` for every element — you will need these to fix drift later.
 
-### Step 4 — Create icons and labels
+### Step 4 — Create icons, labels, and anchor rectangles
 
 ```
 batch_create_elements([
-  // For each actor and work object:
-  { type: "text", id: "icon-[slug]", x, y, text: "emoji",
-    fontFamily: 5, fontSize: 36, strokeColor: color, ... },
-  { type: "text", id: "label-[slug]", x: x-offset, y: icon_y+50,
-    text: "Name", fontFamily: 4, fontSize: 12, strokeColor: color, ... },
   // Title:
   { type: "text", id: "title", x: 450, y: 15, text: "Story title",
-    fontFamily: 4, fontSize: 20 }
+    fontFamily: 4, fontSize: 20 },
+  // For each actor and work object:
+  { type: "text", id: "icon-[slug]", x, y, text: "emoji",
+    fontFamily: 5, fontSize: 36, strokeColor: color },
+  { type: "text", id: "label-[slug]", x: x-offset, y: icon_y+50,
+    text: "Name", fontFamily: 4, fontSize: 12, strokeColor: color },
+  { type: "rectangle", id: "anchor-[slug]", x, y, width: 44, height: 45,
+    backgroundColor: "transparent", strokeColor: "transparent",
+    opacity: 0, roughness: 0 }
 ])
 ```
 
-### Step 5 — Group each icon+label pair
+### Step 5 — Group each triplet (icon + label + anchor)
 
-For each element, call `group_elements` with `[icon-id, label-id]`.
+For each element, call `group_elements` with `[icon-id, label-id, anchor-id]`.
 
-### Step 6 — Create arrows
+### Step 6 — Create arrows (bound to anchors, not icons)
 
 ```
 batch_create_elements([
   // For each numbered activity in the Story Sequence:
   { type: "arrow", id: "arrow-[n]",
-    startElementId: "icon-[source-slug]",
-    endElementId: "icon-[target-slug]",
+    startElementId: "anchor-[source-slug]",   // ← anchor, NOT icon
+    endElementId: "anchor-[target-slug]",      // ← anchor, NOT icon
     text: "① verb",
     strokeColor: source_actor_color,
     strokeStyle: "solid" | "dashed" }
 ])
 ```
 
-### Step 7 — Fix drift (mandatory)
+**No drift fix needed** — rectangle anchors never drift with arrow binding.
 
-After arrow creation, call `update_element` on **every icon** to restore its intended position:
-
-```
-// For each icon element:
-update_element("icon-[slug]", { x: intended_x, y: intended_y })
-```
-
-Do NOT update labels — they don't drift.
-
-### Step 8 — Fit and screenshot
+### Step 7 — Fit and screenshot
 
 ```
 set_viewport({ scrollToContent: true })
@@ -192,12 +197,12 @@ get_canvas_screenshot()
 
 Review the screenshot. If any element is misplaced or overlapping, fix with `update_element`.
 
-### Step 9 — Export PNG
+### Step 8 — Export PNG
 
 ```
 export_to_image({
   format: "png",
-  outputPath: "reports/04_stories/[domain]_story.png"
+  filePath: "/absolute/path/to/reports/04_stories/[domain]_story.png"
 })
 ```
 
