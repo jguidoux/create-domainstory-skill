@@ -140,39 +140,49 @@ Use AskUserQuestion to confirm:
 
 ### Stage 6: Visualization — Mermaid Diagram
 
-**Goal**: Generate a `sequenceDiagram` that captures the story flow.
+**Goal**: Generate a `graph LR` directed graph that captures the Domain Story as a graph — matching the actual Domain Storytelling notation.
 
-**Numbering convention (required):** Each arrow label must start with a two-digit prefix (`01`, `02`, …) indicating the sequence order. The numbers make the story order explicit and are essential in Domain Storytelling.
+**Node types:**
+- **Actors** → circle shape: `((emoji Name))`
+- **Work Objects** → rectangle shape: `[emoji Name]`
+
+**Edge types:**
+- `-->|① verb|` — solid arrow for direct actions
+- `-.->|⑦ verb|` — dashed arrow for responses, returns, or indirect relations
+
+**Numbering convention (required):** Each edge label starts with a Unicode circled number (①②③…⑨) indicating the reading order of activities. Every work object must be connected to at least one edge (no isolated nodes).
 
 ```mermaid
-sequenceDiagram
-    actor Client
-    participant Site as E-commerce Site
-    participant Payment as Payment Service
-    actor Warehouse
+graph LR
+    %% Actors
+    Client((👤 Client))
+    Site((🖥️ E-commerce Site))
+    Payment((💳 Payment Service))
+    Warehouse((🏭 Warehouse))
 
-    Client->>Site: 01 browses product catalogue
-    Site-->>Client: 02 displays results
+    %% Work Objects
+    Catalogue[📋 Product Catalogue]
+    Cart[🛒 Cart]
+    Order[📄 Order]
+    Delivery[🚚 Delivery Info]
+    PaymentData[💰 Payment Data]
+    Email[✉️ Confirmation Email]
+    PickingOrder[📦 Picking Order]
 
-    Client->>Site: 03 adds to cart
-
-    Client->>Site: 04 validates cart + delivery info
-    Note over Site: order is created
-
-    Client->>Site: 05 enters payment details
-
-    Site->>Payment: 06 requests payment authorization
-    Payment-->>Site: 07 confirms payment authorized
-
-    Site-->>Client: 08 sends confirmation email
-
-    Site->>Warehouse: 09 transmits picking order
-    Note over Warehouse: preparation and shipping triggered
+    %% Activities
+    Client -->|① browses| Catalogue
+    Site -->|② displays results| Client
+    Client -->|③ adds to| Cart
+    Client -->|④ validates| Order
+    Order -.->|with| Delivery
+    Client -->|⑤ enters| PaymentData
+    Site -->|⑥ requests authorization| Payment
+    Payment -.->|⑦ confirms| Site
+    Site -->|⑧ sends| Email
+    Email -.->|to| Client
+    Site -->|⑨ transmits| PickingOrder
+    PickingOrder -->|to| Warehouse
 ```
-
-**Arrow styles:**
-- `->>` solid arrow = synchronous action / primary flow
-- `-->>` dashed arrow = response / return / asynchronous
 
 ---
 
