@@ -1,158 +1,214 @@
 ---
 name: create-domain-story
-description: Domain Storytelling agent — elicits and visualizes business processes as domain stories. Invoke with /create-domain-story --domain=[domain-name]
+description: >
+  Domain Storytelling agent following the Hofer & Schwentner methodology.
+  Elicits AS-IS/TO-BE business processes, builds ubiquitous language,
+  discovers bounded context candidates, and prepares for Event Storming.
+  Invoke with /create-domain-story --domain=[name] [--as-is|--to-be]
 user_invocable: true
+allowed-tools: Read, Write, Glob, Grep, Skill, Task
 ---
 
-# Domain Storyteller Agent
-
-A facilitation agent that uses the Domain Storytelling technique to capture and visualize business processes as structured narratives.
+# Domain Storytelling Skill
 
 ## Overview
 
-Domain Storytelling is a technique for making implicit domain knowledge explicit. Each story is built from three elements:
+Domain Storytelling is a collaborative modeling technique that captures business processes through pictographic stories, following the methodology of **Stefan Hofer & Henning Schwentner**. Stories are told from the perspective of domain experts, using their language and their understanding — never the developer's.
 
-| Element | Description | Notation |
-|---------|-------------|----------|
-| **Actor** | A person, role, or system involved in the process | Person icon |
-| **Work Item** | An object or piece of information being handled | Pictogram |
-| **Activity** | An action performed, connecting actors and work items | Numbered arrow with verb label |
+Each story is built from four pictographic elements:
 
-## Prerequisites
+| Element | Symbol | Description |
+|---------|--------|-------------|
+| **Actor** | 👤 (person or system) | Person or system that performs activities |
+| **Work Object** | 📄 (document/item) | Data, documents, or physical items exchanged |
+| **Activity** | ➡️ (arrow with verb) | Action performed by an actor |
+| **Sequence** | ① ② ③ | Numbered order of activities |
+| **Annotation** | 💬 (note) | Additional context or implicit knowledge |
 
-**Recommended inputs (from `/ddd-redesign`):**
-- `reports/03_design/bounded-contexts-redesign.md` — bounded context redesign
-
-**Recommended inputs (from `/analyze-system`):**
-- `reports/01_analysis/ubiquitous-language.md` — ubiquitous language glossary
-- `reports/01_analysis/actors-roles-permissions.md` — actors, roles, and permissions
-
-## Output
-
-Results are written to `reports/04_stories/`.
-**Important**: Write the output file immediately after each completed step — do not wait until the end.
-
-## Execution Modes
-
-### Interactive Mode (recommended)
-
-Elicit the story through dialogue with the user. Use the `AskUserQuestion` tool throughout the 7-stage process below.
-
-### Auto-generate Mode
-
-Infer the story from existing analysis documents. Accuracy is lower, but useful for processing many domains efficiently.
+**Key principle:** Stories must capture real behavior, not idealized processes.
 
 ---
 
-## 7-Stage Facilitation Process
+## Story Types
 
-### Stage 1: Scene Setting (Context Setting)
+### AS-IS Stories
+Document how things work **today**:
+- Current state processes
+- Existing pain points and workarounds
+- Real behavior (not what should happen)
 
-**Goal**: Define the scope of the story.
+**When to use:** Understanding current state, identifying problems, establishing a baseline before changes.
 
-**Example questions:**
-- "Which business process should we explore?"
-- "Where does this process begin and where does it end?"
-- "What is the primary goal?"
+### TO-BE Stories
+Document how things **should work**:
+- Desired future state
+- Improved processes and new capabilities
+- Achievable idealized flow
 
-```
-Use AskUserQuestion to confirm:
-- Target process name
+**When to use:** Requirements gathering, designing solutions, communicating a vision.
+
+> **Important:** Never mix AS-IS and TO-BE in the same story.
+
+---
+
+## Facilitation Modes
+
+### Interactive Mode (Recommended)
+Guided conversation phase by phase with a domain expert. Use `AskUserQuestion` at each phase. Best for: sessions with real domain experts, deep understanding.
+
+### Quick Mode
+The user provides a full narrative in one shot. The skill extracts actors, work objects, activities, and structures the output automatically. Best for: fast capture when the user already knows the process well.
+
+### Document Mode
+Extract stories from existing documentation (specs, process docs, wikis, API contracts). Best for: onboarding, retrofitting, large codebases.
+
+---
+
+## 10-Phase Facilitation Process
+
+### Phase 1 — Setup
+
+**Goal:** Define scope and story type before anything else.
+
+Ask:
+- AS-IS (current state) or TO-BE (future state)?
+- Process name and domain
 - Start point and end point
-- Primary objective
+- Primary objective of this story
+
+```
+Use AskUserQuestion to confirm story type, scope, and objective.
 ```
 
 ---
 
-### Stage 2: Story Opening
+### Phase 2 — Story Collection
 
-**Goal**: Identify the first actor and their first action.
+**Goal:** Gather the narrative in the domain expert's own words.
 
-**Example questions:**
-- "Who starts this process?"
-- "What do they do first?"
-- "What do they use or act upon?"
+**Interactive prompts:**
+- "Tell me about a typical [process] from start to finish."
+- "Walk me through what happens when [trigger event]."
+- "Who is involved and what do they do?"
+
+**Quick Mode:** If the user provides a full narrative, extract directly:
+- Who does what (actors + activities)
+- What they work with (work objects)
+- In what order (sequence numbers)
+
+**Capture:**
+- The main happy path first
+- Domain vocabulary exactly as used by the expert
+
+---
+
+### Phase 3 — Story Refinement
+
+**Goal:** Explore edge cases, variations, and exceptions.
+
+**Prompts:**
+- "What happens if [X] fails or is unavailable?"
+- "Are there any special cases or exceptions?"
+- "What's the most common path vs. rare paths?"
+- "What frustrates you about this process?"
+
+**Capture:**
+- Alternative flows
+- Error handling and recovery
+- Pain points and implicit workarounds
+- Implicit knowledge ("we always do X but nobody wrote it down")
+
+---
+
+### Phase 4 — Actor Identification
+
+**Goal:** Map all participants precisely.
+
+**Prompts:**
+- "Who else is involved that we haven't mentioned?"
+- "Are there any systems or external parties?"
+- "Who approves, reviews, or audits this?"
+
+**Rules:**
+- Identify actors by **role**, never by person's name
+- Distinguish: Human (Internal), Human (External), System (Internal), System (External)
+
+---
+
+### Phase 5 — Work Object Cataloging
+
+**Goal:** Identify all data, documents, and items exchanged.
+
+**Prompts:**
+- "What information is passed between actors?"
+- "What documents or forms are used?"
+- "What data is created, updated, or referenced?"
+
+**Capture:**
+- Documents and forms
+- Data entities and their lifecycle
+- Physical items (if applicable)
+- Which actors create vs. consume each work object
+
+---
+
+### Phase 6 — Boundary Discovery
+
+**Goal:** Find bounded context candidates — the DDD payoff of domain storytelling.
+
+**Analysis questions:**
+- Where does the **terminology shift** between actors? (same word, different meaning = boundary signal)
+- Which actors work together as a **tight cluster**?
+- Which work objects **belong together** and which cross between clusters?
+- Where are the **natural handoff points** in the story?
+
+**Output:** A list of bounded context candidates with rationale.
 
 ```markdown
-## First Scene
+## Boundary Discovery
 
-**Actor**: [who]
-**Activity**: [does what]
-**Work Item**: [with/to what]
+| Candidate BC | Actors | Work Objects | Rationale |
+|---|---|---|---|
+| Order Management | Sales Rep, Order System | Order Form, Order | Tight coupling, shared vocabulary |
+| Fulfillment | Warehouse Staff | Pick List, Shipment | Separate terminology, clear handoff |
 ```
 
 ---
 
-### Stage 3: Story Development
+### Phase 7 — Glossary Building
 
-**Goal**: Follow the chain of activities in chronological order.
+**Goal:** Build the ubiquitous language — the shared vocabulary for this domain.
 
-**Example questions:**
-- "What happens next?"
-- "Who acts on what was just produced?"
-- "What information is passed along?"
+As the story is told, extract every domain term and document it:
 
 ```markdown
-## Scene [N]
+## Glossary
 
-**Precondition**: [handoff from previous scene]
-**Actor**: [who]
-**Activity**: [does what]
-**Work Item**: [with/to what]
-**Result**: [handoff to next scene]
+| Term | Definition | Context | Aliases |
+|------|-----------|---------|---------|
+| Order | A validated customer request for products | Sales | Purchase Order, PO |
+| Pick List | List of items to retrieve from warehouse | Fulfillment | Picking Ticket |
 ```
 
----
-
-### Stage 4: Confirmation
-
-**Goal**: Review the story as captured so far.
-
-**Check:**
-- Are there any gaps or missing steps?
-- Is the order correct?
-- Are the terms appropriate and precise?
+**Watch for term collisions:** when two actors use the same word with different meanings — this is a bounded context boundary signal.
 
 ---
 
-### Stage 5: Exception Handling
+### Phase 8 — Visualization — Mermaid Diagram
 
-**Goal**: Identify failure paths and alternative scenarios.
-
-**Example questions:**
-- "What happens if this step fails?"
-- "What if the data is invalid?"
-- "What if the system is unavailable?"
-
-```markdown
-## Exception Scenarios
-
-### [Exception Name 1]
-**Trigger**: [what causes it]
-**Response**: [how it is handled]
-**Recovery**: [how the flow returns to normal]
-
-### [Exception Name 2]
-...
-```
-
----
-
-### Stage 6: Visualization — Mermaid Diagram
-
-**Goal**: Generate a `graph LR` directed graph that captures the Domain Story as a graph — matching the actual Domain Storytelling notation.
+**Goal:** Generate a directed graph that matches the Domain Storytelling pictographic notation.
 
 **Node types (no visible borders):**
 - **Actors** → `["emoji<br/>Name"]:::actor`
 - **Work Objects** → `["emoji<br/>Name"]:::wo`
 
-Both use `classDef fill:none,stroke:none` to hide the shape border. The `<br/>` places the label below the emoji. This notation renders correctly on GitHub and most modern Mermaid renderers.
+Both use `classDef fill:none,stroke:none`. The `<br/>` stacks the label under the emoji.
 
 **Edge types:**
 - `-->|① verb|` — solid arrow for direct actions
 - `-.->|⑦ verb|` — dashed arrow for responses, returns, or indirect relations
 
-**Numbering convention (required):** Each edge label starts with a Unicode circled number (①②③…⑨) indicating the reading order of activities. Every work object must be connected to at least one edge (no isolated nodes).
+**Rule:** Every work object must be connected to at least one edge. No isolated nodes.
 
 ```mermaid
 graph LR
@@ -191,90 +247,110 @@ graph LR
 
 ---
 
-### Stage 7: Closing
+### Phase 9 — DDD Integration
 
-**Goal**: Confirm completeness and decide on next steps.
+**Goal:** Map the story to DDD and Event Storming concepts, and define next steps.
 
-**Check:**
-- Are there additional scenarios to capture?
-- Are all terms clearly defined?
-- Which process should be explored next?
+**Story → Event Storming mapping:**
+
+| Story Element | Event Storming Element |
+|---|---|
+| Activity | Command or Domain Event |
+| Work Object | Aggregate or Read Model |
+| Actor | Actor (yellow sticky) |
+| Boundary (from Phase 6) | Bounded Context candidate |
+| Sequence | Timeline ordering |
+
+**Workflow:**
+```
+Domain Storytelling  →  understand "what happens"
+        ↓
+Event Storming       →  design "how it happens"
+        ↓
+Bounded Contexts     →  Modular Architecture
+```
+
+**To proceed:** Invoke the `event-storming` skill with the collected story and boundary discovery as input.
 
 ---
 
-### Stage 8: Mermaid Validation
+### Phase 10 — Validation & Output
 
-Validate the Mermaid diagram in the output file and fix any syntax errors:
-
-```bash
-/fix-mermaid ./reports/04_stories
-```
+1. Validate the Mermaid diagram: run `/fix-mermaid ./reports/04_stories`
+2. Verify no isolated work objects (every node must have at least one connected arrow)
+3. Write the full output file to `reports/04_stories/[domain]_story.md`
+4. For a visual diagram: invoke `/excalidraw` with the story as input
 
 ---
 
 ## Output Format
 
-### `reports/04_stories/[domain]_story.md`
+Write to `reports/04_stories/[domain]_story.md`. Write progressively — do not wait until the end.
 
-The output file contains:
-- Summary and context
-- Actors table
-- Work items list
-- Main story (scene by scene)
-- Mermaid flow diagram (with numbered arrows)
-- Exception scenarios
-- Business rules identified
-- Domain events detected
-- Glossary
-- Metadata (date, domain, scope)
+```markdown
+# Domain Story: [Story Name]
 
----
+**Type**: AS-IS | TO-BE
+**Domain**: [Domain Name]
+**Date**: YYYY-MM-DD
 
-## Interactive Mode — Implementation Notes
+## Narrative Summary
+[2-3 sentence plain language summary of the story]
 
+## Story Sequence
+① **[Actor]** [verb] **[Work Object]** to **[Actor]**
+② **[Actor]** [verb] **[Work Object]** using **[Work Object]**
+...
+
+## Actors
+| Actor | Type | Responsibilities |
+|-------|------|-----------------|
+| | Human (External) | |
+| | System (Internal) | |
+
+## Work Objects
+| Work Object | Type | Used By | Description |
+|-------------|------|---------|-------------|
+
+## Annotations
+- [Note]: [implicit knowledge or exception that doesn't fit the main flow]
+
+## Boundary Discovery
+| Candidate | Actors | Work Objects | Rationale |
+|-----------|--------|--------------|-----------|
+
+## Glossary
+| Term | Definition | Context | Aliases |
+|------|-----------|---------|---------|
+
+## Mermaid Diagram
+[graph LR with emoji + borderless nodes]
+
+## DDD Next Steps
+- **Bounded context candidates**: [list from Phase 6]
+- **Event Storming candidates**: [activities that map to domain events]
+- **Next skill**: `/excalidraw` for visual diagram → then `event-storming`
 ```
-Use AskUserQuestion to gather information from the user at each stage.
-Use Read to load existing analysis documents as context.
-Write the output file progressively — do not batch everything at the end.
-```
-
----
-
-## Auto-generate Mode — Implementation Notes
-
-Infer from existing documents:
-
-1. **Extract actors**
-   - Human actors from `actors-roles-permissions.md`
-   - System actors from `system-overview.md`
-
-2. **Extract work items**
-   - Entities from `ubiquitous-language.md`
-   - Data objects from `domain-code-mapping.md`
-
-3. **Infer activities**
-   - Identify CRUD operations from API definitions
-   - Identify business actions from event definitions
-
-4. **Build the story**
-   - Infer use case order
-   - Build flow from dependency relationships
 
 ---
 
 ## Best Practices
 
-### Do's
-- Use business language — avoid technical jargon
-- Work with concrete, specific scenarios
-- Always explore exception cases
-- Express the story both as prose (scenes) and as a diagram
+### Do
+- Use the domain expert's exact language — never paraphrase into technical terms
+- Capture stories at the right granularity (not too broad, not implementation-level)
+- Include exceptions and variations (Phase 3 is as important as Phase 2)
+- Number activities sequentially ①②③…
+- Document annotations for implicit knowledge
+- Build the glossary as you go, not at the end
+- Separate AS-IS and TO-BE into distinct stories
 
-### Don'ts
-- Do not go into implementation details
-- Do not proceed on assumptions — always confirm with the user
-- Do not create diagrams that are too complex to read
-- Do not use domain terms without defining them first
+### Don't
+- Impose technical terminology
+- Skip edge cases — they reveal the real domain
+- Mix AS-IS and TO-BE in the same story
+- Use an actor's personal name (use their role)
+- Forget to validate with the domain expert
 
 ---
 
@@ -282,19 +358,21 @@ Infer from existing documents:
 
 | Situation | Response |
 |-----------|----------|
-| Domain expert unavailable | Infer from existing docs/code; warn that accuracy may be lower |
-| Story is too complex | Propose splitting into sub-processes |
-| Ubiquitous language not yet defined | Guide the user to run `/analyze-system` first |
+| Domain expert unavailable | Use Document Mode — warn that accuracy may be lower |
+| Story too complex to capture in one diagram | Split into sub-stories (e.g., one per bounded context) |
+| Terminology collision detected | Flag it explicitly in the Glossary as a boundary signal |
 | Mermaid syntax error | Run `/fix-mermaid` to repair |
+| Ubiquitous language not yet defined | Run `/analyze-system` first |
 
 ---
 
 ## Related Skills
 
-| Skill | Purpose |
-|-------|---------|
-| `/analyze-system` | Extract ubiquitous language and actors (input) |
-| `/excalidraw` | Generate an Excalidraw visual diagram from the story (next step) |
-| `/ddd-redesign` | DDD redesign (downstream use) |
-| `/map-domains` | Domain mapping (complementary) |
-| `/build-graph` | Knowledge graph construction (output use) |
+| Skill | Role in the DDD workflow |
+|-------|--------------------------|
+| `/analyze-system` | Extract existing actors and ubiquitous language (input) |
+| `/excalidraw` | Generate the visual Domain Storytelling diagram from this story |
+| `event-storming` | Design "how it happens" — immediate next step after storytelling |
+| `/ddd-redesign` | Redesign bounded contexts using discovered candidates |
+| `modular-architecture` | Implement the bounded contexts |
+| `adr-management` | Document significant decisions discovered during storytelling |
