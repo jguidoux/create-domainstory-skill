@@ -6,7 +6,7 @@ description: >
   Actors as emoji icons, work objects as pictograms, numbered arrows.
   Invoke with /domain-story-to-excalidraw --file=reports/04_stories/[domain]_story.md
 user_invocable: true
-allowed-tools: Read, Write, Skill, mcp__excalidraw__clear_canvas, mcp__excalidraw__batch_create_elements, mcp__excalidraw__update_element, mcp__excalidraw__group_elements, mcp__excalidraw__set_viewport, mcp__excalidraw__get_canvas_screenshot, mcp__excalidraw__export_to_image
+allowed-tools: Read, Write, Skill, mcp__excalidraw__clear_canvas, mcp__excalidraw__batch_create_elements, mcp__excalidraw__update_element, mcp__excalidraw__group_elements, mcp__excalidraw__layout_domain_story, mcp__excalidraw__curve_parallel_arrows, mcp__excalidraw__set_viewport, mcp__excalidraw__get_canvas_screenshot, mcp__excalidraw__export_to_image
 ---
 
 # Domain Story → Excalidraw
@@ -129,22 +129,42 @@ Bind arrows using `startElementId: "anchor-[slug]"` — never to `icon-[slug]`.
 
 ## Layout
 
+Layout is computed by the `layout_domain_story` MCP tool after all triplets are created. The tool uses force-directed simulation (d3-force) to position actors according to their interaction weights, then places each work object on the edge of its activity (between its source and target actor). The final diagram is oriented left-to-right from the story initiator to the final actor.
+
+**Do NOT pre-compute fixed y coordinates for elements.** Place triplets at rough provisional positions (e.g., actors at `y=250` with arbitrary x, WOs at `y=50` or `y=430`); `layout_domain_story` will move them all into a readable arrangement. Creating elements at provisional positions is fine — any position works.
+
+---
+
+## Deriving `layout_domain_story` Inputs
+
+The tool needs two kinds of graph data derived from the Story Sequence:
+
+### `interactions` — weighted actor edges (Phase 1 input)
+
+Count how many activities involve each unique unordered actor pair:
+
 ```
-y=15   [Title]
-
-y=50   [WorkObj]  [WorkObj]  [WorkObj]  ...   (work objects above)
-
-y=250  [Actor]    [Actor]    [Actor]    ...   (actors — center row)
-
-y=450  [WorkObj]  [WorkObj]  [WorkObj]  ...   (work objects below)
+① Spectateur → SysBilletterie    → increment Spectateur↔SysBilletterie
+② SysBilletterie → Spectateur    → increment Spectateur↔SysBilletterie
+③ Spectateur → Caissier          → increment Spectateur↔Caissier
 ```
 
-- Actors are placed in a horizontal row at `y=250`, spaced `350px` apart
-- Work objects consumed by left actors → place above-left (`y=50`)
-- Work objects consumed by right actors → place above-right or below
-- Work objects from the warehouse / fulfillment side → place at `y=450`
-- Title centered at `x=450, y=15`
-- Assign element IDs as `icon-[slug]` and `label-[slug]` (e.g., `icon-client`, `label-client`)
+Result: `{ source: "spectateur", target: "sysbilletterie", weight: 2 }`, etc. Higher weight = actors placed closer together.
+
+### `workObjects[].sourceActorId` / `targetActorId` (Phase 2 input)
+
+For each WO instance, record:
+- `sourceActorId` — the actor who creates or passes the WO
+- `targetActorId` — the actor who receives it (`null` if the WO is emitted but not sent to another actor)
+
+These determine where on the canvas the WO is placed: at the midpoint of the source↔target edge, offset perpendicularly.
+
+### `startActorId` / `endActorId` options
+
+- `startActorId` — slug of the actor who triggers activity ①
+- `endActorId` — slug of the actor targeted in the last activity
+
+Used to rotate the graph so the story reads left-to-right.
 
 ---
 
@@ -164,19 +184,17 @@ For each actor and work object, determine:
 - Emoji from the keyword table above
 - Color from the palette (actors by order, work objects always `#555`)
 
-### Step 3 — Calculate layout
+### Step 3 — Derive layout inputs
 
-Place actors in a horizontal row at `y=250`.
+From the Story Sequence, compute:
 
-For each work object **instance** (one per activity):
-- WO created/emitted by a system actor (flows downward to human actors) → `y=50`, x aligned on the source actor
-- WO exchanged between actors (flows horizontally) → `y=430`, x positioned between the two actors involved
+1. **Interaction weights** — count activities per unordered actor pair → `interactions[]`
+2. **WO source/target** — for each WO instance, identify `sourceActorId` and `targetActorId` (null if no target actor)
+3. **Start/end actors** — `startActorId` = actor of activity ①, `endActorId` = target of last activity
 
-Multiple instances of the same WO (e.g., Ticket×3) are spread along the x-axis at their respective positions — they do not share a single node.
+### Step 4 — Create triplets at provisional positions
 
-Record the intended `(x, y)` for every element — needed for anchor rectangle placement.
-
-### Step 4 — Create icons, labels, and anchor rectangles
+Place actors roughly (exact positions do not matter — `layout_domain_story` will move them):
 
 ```
 batch_create_elements([
@@ -206,7 +224,50 @@ batch_create_elements([
 
 For each element, call `group_elements` with `[icon-id, label-id, anchor-id]`.
 
-### Step 6 — Create arrows (bound to anchors, not icons)
+### Step 6 — Run force-directed layout
+
+```
+layout_domain_story({
+  actors: [
+    { id: "spectateur",
+      anchorId: "anchor-spectateur",
+      memberIds: ["icon-spectateur", "label-spectateur", "anchor-spectateur"] },
+    // ... one entry per actor
+  ],
+  interactions: [
+    { source: "spectateur", target: "caissier", weight: 3 },
+    // ... one entry per unique actor pair (weight = activity count)
+  ],
+  workObjects: [
+    { id: "ticket-7",
+      anchorId: "anchor-ticket-7",
+      memberIds: ["icon-ticket-7", "label-ticket-7", "anchor-ticket-7"],
+      sourceActorId: "sysbilletterie",
+      targetActorId: null },        // emitted-only WO
+    { id: "ticket-8",
+      anchorId: "anchor-ticket-8",
+      memberIds: ["icon-ticket-8", "label-ticket-8", "anchor-ticket-8"],
+      sourceActorId: "caissier",
+      targetActorId: "spectateur" }, // exchanged WO
+    // ...
+  ],
+  options: {
+    linkDistance: 320,       // distance between strongly-linked actor pairs
+    charge: -1500,           // repulsion between all actors
+    collisionRadius: 130,    // minimum spacing between actor triplets
+    woOffset: 150,           // perpendicular distance of WOs from actor edges
+    startActorId: "spectateur",
+    endActorId: "controleur"
+  }
+})
+```
+
+**Recommended starting options:** `linkDistance=320, charge=-1500, collisionRadius=130, woOffset=150`.
+Adjust `linkDistance` up if actors are too crowded, `charge` down (more negative) to spread them further apart.
+
+### Step 7 — Create arrows bound to anchors (AFTER layout)
+
+**Critical:** Create arrows only AFTER `layout_domain_story` has run. Excalidraw does not re-route arrows when the elements they are bound to move — so arrows created before layout will not reflect the final positions.
 
 ```
 batch_create_elements([
@@ -222,16 +283,26 @@ batch_create_elements([
 
 **No drift fix needed** — rectangle anchors never drift with arrow binding.
 
-### Step 7 — Fit and screenshot
+### Step 8 — Separate parallel arrows
+
+Some actor pairs have multiple arrows (e.g., Spectateur↔SysBilletterie with ① and ②). Without curving, they stack on top of each other.
+
+```
+curve_parallel_arrows({ spacing: 80 })
+```
+
+`spacing` controls how far apart arrows bow. 65–90px works well for most layouts; increase if labels still overlap.
+
+### Step 9 — Fit and screenshot
 
 ```
 set_viewport({ scrollToContent: true })
 get_canvas_screenshot()
 ```
 
-Review the screenshot. If any element is misplaced or overlapping, fix with `update_element`.
+Review the screenshot. If actors or WOs are still overlapping after layout, re-run `layout_domain_story` with adjusted options (higher `charge`, larger `linkDistance`). If a specific element needs nudging, use `update_element`.
 
-### Step 8 — Export PNG
+### Step 10 — Export PNG
 
 ```
 export_to_image({
