@@ -79,6 +79,26 @@ Assign colors to actors in order of appearance in the story. Work objects always
 | 5th+ (cycle) | blue → purple → green → orange |
 | Work objects | `#555` (gray) |
 
+### Work Object Duplication Rule (critical)
+
+In Domain Storytelling, a work object is an **intermediary node per activity** — not a shared global node. The correct visual sentence is:
+
+```
+[Actor] --[① verb]--> [Work Object] --[à]--> [Actor target]
+```
+
+**Each time a work object appears in a different activity, create a new instance.**
+
+- Parse WOs from `## Story Sequence` activities, **not** from the `## Work Objects` table
+- For each activity that involves a WO, create a new triplet: `icon-[slug]-[seq]`, `label-[slug]-[seq]`, `anchor-[slug]-[seq]`
+- If the same WO appears in N activities → N separate triplets on the canvas
+- Position each copy near the actors involved in that specific activity
+
+Example — Ticket appears in activities ⑦, ⑧, ⑨:
+- `anchor-ticket-7` : created by SysBilletterie (place at y=50 near SysBilletterie)
+- `anchor-ticket-8` : remis by Caissier to Spectateur (place at y=430 between them)
+- `anchor-ticket-9` : presented by Spectateur to Contrôleur (place at y=430 between them)
+
 ### Arrow Rules
 
 - Use `startElementId` / `endElementId` to bind arrows to elements (arrows follow when moved)
@@ -134,9 +154,9 @@ y=450  [WorkObj]  [WorkObj]  [WorkObj]  ...   (work objects below)
 
 Read the input file. Extract:
 - Story title
-- Actors list (name, type)
-- Work objects list (name)
-- Story Sequence (numbered activities: actor → verb → work object → target actor)
+- Actors list (name, type) — from `## Actors` table
+- Story Sequence — from `## Story Sequence` (numbered activities: actor → verb → work object → target actor)
+- **Work object instances** — derived from Story Sequence, NOT from `## Work Objects` table. For each activity that mentions a WO, record: WO name, sequence number, source actor, target actor. Same WO name in different activities = different instances.
 
 ### Step 2 — Assign emojis and colors
 
@@ -147,8 +167,14 @@ For each actor and work object, determine:
 ### Step 3 — Calculate layout
 
 Place actors in a horizontal row at `y=250`.
-Distribute work objects above (`y=50`) or below (`y=450`) based on which actors use them.
-Record the intended `(x, y)` for every element — you will need these to fix drift later.
+
+For each work object **instance** (one per activity):
+- WO created/emitted by a system actor (flows downward to human actors) → `y=50`, x aligned on the source actor
+- WO exchanged between actors (flows horizontally) → `y=430`, x positioned between the two actors involved
+
+Multiple instances of the same WO (e.g., Ticket×3) are spread along the x-axis at their respective positions — they do not share a single node.
+
+Record the intended `(x, y)` for every element — needed for anchor rectangle placement.
 
 ### Step 4 — Create icons, labels, and anchor rectangles
 
@@ -157,12 +183,20 @@ batch_create_elements([
   // Title:
   { type: "text", id: "title", x: 450, y: 15, text: "Story title",
     fontFamily: 4, fontSize: 20 },
-  // For each actor and work object:
-  { type: "text", id: "icon-[slug]", x, y, text: "emoji",
+  // For each actor (one per actor):
+  { type: "text", id: "icon-[actor-slug]", x, y, text: "emoji",
     fontFamily: 5, fontSize: 36, strokeColor: color },
-  { type: "text", id: "label-[slug]", x: x-offset, y: icon_y+50,
+  { type: "text", id: "label-[actor-slug]", x: x-offset, y: icon_y+50,
     text: "Name", fontFamily: 4, fontSize: 12, strokeColor: color },
-  { type: "rectangle", id: "anchor-[slug]", x, y, width: 44, height: 45,
+  { type: "rectangle", id: "anchor-[actor-slug]", x, y, width: 44, height: 45,
+    backgroundColor: "transparent", strokeColor: "transparent",
+    opacity: 0, roughness: 0 },
+  // For each work object INSTANCE (one per activity, suffixed with seq number):
+  { type: "text", id: "icon-[wo-slug]-[seq]", x, y, text: "emoji",
+    fontFamily: 5, fontSize: 36, strokeColor: "#555" },
+  { type: "text", id: "label-[wo-slug]-[seq]", x: x-offset, y: icon_y+50,
+    text: "WO Name", fontFamily: 4, fontSize: 12, strokeColor: "#555" },
+  { type: "rectangle", id: "anchor-[wo-slug]-[seq]", x, y, width: 44, height: 45,
     backgroundColor: "transparent", strokeColor: "transparent",
     opacity: 0, roughness: 0 }
 ])

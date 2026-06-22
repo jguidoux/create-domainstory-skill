@@ -210,6 +210,24 @@ Both use `classDef fill:none,stroke:none`. The `<br/>` stacks the label under th
 
 **Rule:** Every work object must be connected to at least one edge. No isolated nodes.
 
+**Work Object Duplication Rule (critical):**
+In Domain Storytelling, each work object is an **intermediary node per activity** — not a shared global node. When the same work object appears in multiple activities, create **one node per activity** using a suffixed ID, but with the same display label:
+
+```mermaid
+%% Ticket appears in activities ⑦, ⑧, ⑨ → 3 separate nodes
+Ticket_7["🎫<br/>Ticket"]:::wo    %% ⑦ SysBilletterie émet
+Ticket_8["🎫<br/>Ticket"]:::wo    %% ⑧ Caissier remet
+Ticket_9["🎫<br/>Ticket"]:::wo    %% ⑨ Spectateur présente
+
+SysBilletterie -->|⑦ émet| Ticket_7
+Caissier -->|⑧ remet| Ticket_8
+Ticket_8 -.->|à| Spectateur
+Spectateur -->|⑨ présente| Ticket_9
+Ticket_9 -.->|au| Controleur
+```
+
+**Do NOT** reuse the same node ID — Mermaid treats repeated references as a single shared node. The suffix is the sequence number of the activity where the work object is **introduced** (created or sent). If the same activity both creates and receives a WO, use the same copy for that exchange.
+
 ```mermaid
 graph LR
     classDef actor fill:none,stroke:none
