@@ -100,6 +100,25 @@ Use AskUserQuestion to confirm story type, scope, and objective.
 - The main happy path first
 - Domain vocabulary exactly as used by the expert
 
+**Work Object Provenance Rule (inline — apply during collection):**
+Every time a new work object appears in the narrative, immediately ask:
+> *"D'où vient [ce WO] ? Qui le crée ou le fournit ?"*
+
+Then follow up recursively until you reach a true source:
+> *"Et comment [cet acteur] crée-t-il ou obtient-il [ce WO] lui-même ?"*
+
+Keep asking until one of these stopping conditions is met:
+- The WO comes from a real-world physical source (sensor, measurement, external authority)
+- The WO is created by an actor clearly out of scope (different domain, different story)
+- The domain expert says "ça sort du périmètre" or equivalent
+
+Do not stop at the first "who sends it" answer — the sender is a relay, not necessarily the creator.
+
+Provenance reveals:
+- Hidden upstream actors or systems not yet named
+- Adjacent processes that belong in a separate story
+- Whether the WO is produced inside this story or imported from outside its scope
+
 ---
 
 ### Phase 3 — Story Refinement
@@ -144,11 +163,17 @@ Use AskUserQuestion to confirm story type, scope, and objective.
 - "What documents or forms are used?"
 - "What data is created, updated, or referenced?"
 
+**Prompts:**
+- "D'où vient [ce WO] ? Qui le crée ou le fournit ?"
+- "Est-ce qu'il existe avant le début de cette story, ou il est créé pendant ?"
+- "Qui le met à jour ? Qui le consomme ou le détruit ?"
+
 **Capture:**
 - Documents and forms
-- Data entities and their lifecycle
+- Data entities and their lifecycle (created → used → consumed/destroyed)
 - Physical items (if applicable)
 - Which actors create vs. consume each work object
+- **Provenance**: where each WO comes from (upstream process, external system, pre-existing reference)
 
 ---
 
@@ -327,8 +352,8 @@ Write to `reports/04_stories/[domain]_story.md`. Write progressively — do not 
 | | System (Internal) | |
 
 ## Work Objects
-| Work Object | Type | Used By | Description |
-|-------------|------|---------|-------------|
+| Work Object | Type | Provenance | Used By | Description |
+|-------------|------|-----------|---------|-------------|
 
 ## Annotations
 - [Note]: [implicit knowledge or exception that doesn't fit the main flow]
@@ -357,6 +382,7 @@ Write to `reports/04_stories/[domain]_story.md`. Write progressively — do not 
 ### Do
 - Use the domain expert's exact language — never paraphrase into technical terms
 - Capture stories at the right granularity (not too broad, not implementation-level)
+- Ask provenance of each work object **as it first appears** in the narrative — don't wait for Phase 5
 - Include exceptions and variations (Phase 3 is as important as Phase 2)
 - Number activities sequentially ①②③…
 - Document annotations for implicit knowledge
